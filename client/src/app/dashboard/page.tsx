@@ -3,9 +3,18 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
 
+interface Event {
+    id: string;
+    title: string;
+    startDateTime: string;
+    endDateTime: string;
+    attendees?: string[];
+    description?: string;
+}
+
 export default function Dashboard() {
-    const [upcoming, setUpcoming] = useState([]);
-    const [past, setPast] = useState([]);
+    const [upcoming, setUpcoming] = useState<Event[]>([]);
+    const [past, setPast] = useState<Event[]>([]);
     const [loadingSummaryId, setLoadingSummaryId] = useState<string | null>(null);
     const [summaries, setSummaries] = useState<{ [key: string]: string }>({});
 
@@ -13,17 +22,17 @@ export default function Dashboard() {
         const fetchEvents = async () => {
             try {
                 const res = await axios.get(`${process.env.NEXT_PUBLIC_API_BASE}/api/calendar/meetings`, {
-                    withCredentials: true
+                    withCredentials: true,
                 });
-                const events = res.data.events || [];
+                const events: Event[] = res.data.events || [];
                 const now = new Date();
 
                 const upcomingEvents = events
-                    .filter((e: any) => new Date(e.startDateTime) >= now)
+                    .filter((e: Event) => new Date(e.startDateTime) >= now)
                     .slice(0, 5);
 
                 const pastEvents = events
-                    .filter((e: any) => new Date(e.startDateTime) < now)
+                    .filter((e: Event) => new Date(e.startDateTime) < now)
                     .slice(0, 5);
 
                 setUpcoming(upcomingEvents);
@@ -36,7 +45,7 @@ export default function Dashboard() {
         fetchEvents();
     }, []);
 
-    const generateSummary = async (event: any) => {
+    const generateSummary = async (event: Event) => {
         setLoadingSummaryId(event.id);
         try {
             const start = new Date(event.startDateTime);
@@ -48,16 +57,16 @@ export default function Dashboard() {
                 time: start.toLocaleString(),
                 duration: `${durationMinutes} min`,
                 attendees: event.attendees || [],
-                description: event.description || ''
+                description: event.description || '',
             };
 
             const res = await axios.post(`${process.env.NEXT_PUBLIC_API_BASE}/api/summary`, payload, {
-                withCredentials: true
+                withCredentials: true,
             });
 
-            setSummaries(prev => ({
+            setSummaries((prev) => ({
                 ...prev,
-                [event.id]: res.data.summary
+                [event.id]: res.data.summary,
             }));
         } catch (error) {
             console.error('Failed to generate summary:', error);
@@ -66,7 +75,7 @@ export default function Dashboard() {
         }
     };
 
-    const EventCard = ({ event }: { event: any }) => {
+    const EventCard = ({ event }: { event: Event }) => {
         const start = new Date(event.startDateTime);
         const end = new Date(event.endDateTime);
         const durationMinutes = Math.round((end.getTime() - start.getTime()) / 60000);
@@ -75,18 +84,17 @@ export default function Dashboard() {
             <div className="bg-gray-900 border border-gray-700 shadow-lg rounded-xl p-5 hover:border-blue-500 transition-all">
                 <h3 className="text-lg font-semibold text-white">{event.title}</h3>
                 <p className="text-sm text-gray-400">
-                    {start.toLocaleDateString()} • {start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    {start.toLocaleDateString()} • {start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} -{' '}
+                    {end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </p>
                 <p className="text-sm text-gray-300 mt-1">⏳ Duration: {durationMinutes} min</p>
 
-                {event.attendees?.length > 0 && (
+                {Array.isArray(event.attendees) && event.attendees.length > 0 && (
                     <p className="text-sm text-gray-300 mt-1">
                         👥 <strong>Attendees:</strong> {event.attendees.join(', ')}
                     </p>
                 )}
-                {event.description && (
-                    <p className="text-sm text-gray-400 mt-2 italic">{event.description}</p>
-                )}
+                {event.description && <p className="text-sm text-gray-400 mt-2 italic">{event.description}</p>}
 
                 <button
                     onClick={() => generateSummary(event)}
@@ -95,8 +103,7 @@ export default function Dashboard() {
                 >
                     {loadingSummaryId === event.id ? (
                         <span className="flex items-center gap-2">
-                            <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-                            Generating...
+                            <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span> Generating...
                         </span>
                     ) : (
                         '✨ Generate Summary'
@@ -120,7 +127,7 @@ export default function Dashboard() {
                 <h2 className="text-2xl font-semibold mb-4 text-blue-400">Upcoming Events</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {upcoming.length > 0 ? (
-                        upcoming.map((event: any) => <EventCard key={event.id} event={event} />)
+                        upcoming.map((event) => <EventCard key={event.id} event={event} />)
                     ) : (
                         <p className="text-gray-500 italic">No upcoming events</p>
                     )}
@@ -131,7 +138,7 @@ export default function Dashboard() {
                 <h2 className="text-2xl font-semibold mb-4 text-green-400">Past Events</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {past.length > 0 ? (
-                        past.map((event: any) => <EventCard key={event.id} event={event} />)
+                        past.map((event) => <EventCard key={event.id} event={event} />)
                     ) : (
                         <p className="text-gray-500 italic">No past events</p>
                     )}
